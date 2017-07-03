@@ -1,0 +1,30 @@
+#!/bin/sh /etc/rc.common
+# maintainer: Qige <qigezhao@gmail.com>
+# updated on: 2017.06.05
+
+START=99
+STOP=99
+
+APP=ec54s
+CONF=/etc/config/$APP
+CMD=/usr/sbin/$APP
+
+_SIGNAL=/tmp/.ec54s_signal
+_CACHE=/dev/null
+
+start() {
+	if [ -f "$CONF" ]; then
+		echo "* loading config from file"
+	else
+		echo "* default settings (no conf file)"
+	fi
+
+	$CMD > "$_CACHE" 2>&1 &
+}
+
+stop() {
+	echo -n "exit" > "$_SIGNAL"
+	sleep 3
+	killall $APP
+	cat "$_SIGNAL"
+}
