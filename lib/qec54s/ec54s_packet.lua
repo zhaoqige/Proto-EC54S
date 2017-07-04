@@ -1,6 +1,6 @@
 -- by Qige <qigezhao@gmail.com>
 -- 2017.06.30 encode|decode|length
--- 2017.07.03 dl_seq|dl_devid
+-- 2017.07.03 dl_seq|dl_devid|seq_max
 
 local tbl_push = table.insert
 local tbl_flat = table.concat
@@ -15,7 +15,7 @@ local Packet = {}
 
 Packet.conf = {}
 Packet.conf.bytes_tail = "\n\n"
-Packet.conf.seq_max = 255
+Packet.conf.seq_max = 65536
 
 Packet.message = {}
 Packet.message.TYPE_DL_QUERY        = 0x11    -- 0001 0001
@@ -45,7 +45,9 @@ function Packet.encode(pkt)
   else
     local ul_seq = Packet.cache.ul_seq or 0
     tbl_push(packet_raw, 2, Packet.dbl_char(ul_seq))
-    Packet.cache.ul_seq = ul_seq + 1    -- save ul seq
+    ul_seq = ul_seq + 1    -- save ul seq
+    ul_seq = ul_seq % Packet.conf.seq_max
+    Packet.cache.ul_seq = ul_seq
   end
 
   if (packet.devid) then
@@ -162,17 +164,19 @@ end
 
 -- Hi byte | Low byte
 function Packet.dbl_char(val)
-  if (val > 65535) then
-    val = val % 65535
+  if (val > Packet.conf.seq_max) then
+    val = val % Packet.conf.seq_max
   end
   return schar(math.floor(val / 256)) .. schar(val % 256)
 end
 
 function Packet.int(str)
   if (str) then
-	local hi = sbyte(str, 1, 2)
+    local hi = sbyte(str, 1, 2)
     local low = sbyte(str, 2, 3)
-	return hi*256+low
+    local v = hi * 256 + low
+    v = v % Packet.conf.seq_max
+    return v
   end
   return 0
 end

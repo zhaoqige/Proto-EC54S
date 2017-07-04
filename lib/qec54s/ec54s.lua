@@ -65,19 +65,27 @@ function EC54S.agent.daemon(    -- Public API
     setmetatable(ec54s_agent, EC54S.agent)    -- Fake OOP
     ec54s_agent.VERSION = EC54S.VERSION .. ' Daemon'
     ec54s_agent.callback = callback
-    ec54s_agent.server = server or '127.0.0.1'
-    ec54s_agent.server_port = server_port or EC54S.agent.DEFAULT_PORT
-    ec54s_agent.port = port or EC54S.agent.DEFAULT_PORT
-    ec54s_agent.auto_report = false
     ec54s_agent.connected = false
     ec54s_agent.destroyed = false
     ec54s_agent.socket_fd = nil
+
     ec54s_agent.dl_timeout_times = 0
     ec54s_agent.dl_msg_seq = 0
     ec54s_agent.dl_msg_devid = 0
     ec54s_agent.ul_msg_seq = 0
     ec54s_agent.ul_msg_devid = local_devid or 0xff
+
+    ec54s_agent.dl_host = nil
     ec54s_agent.dl_port = tonumber(ec54s_agent.port)
+
+    ec54s_agent.server = server or '127.0.0.1'
+    ec54s_agent.server_port = server_port or EC54S.agent.DEFAULT_PORT
+    ec54s_agent.port = port or EC54S.agent.DEFAULT_PORT
+    
+    ec54s_agent.auto_report = true
+    ec54s_agent.auto_report_ts = 0    -- store last time stamp
+    ec54s_agent.auto_report_intl = 1    -- interval is 1 seconds
+
     return (ec54s_agent)
 end
 
@@ -116,33 +124,38 @@ function EC54S.agent:service_handle()    -- Public API
     if (self.connected == false) then
         EC54S.Util.dbg("EC54S.agent:service_handle(): Not connected")
     else
-        if (self.auto_report) then    -- report right away
-          self:message_send(EC54S.message.TYPE_UL_REPORT)
-          --self:idle(1)    -- DEBUG USE ONLY!
-        else
-          --[
-          -- wait for command
-          local buf, peer, peer_port = EC54S.Util.socket_recv(self.socket_fd)
-          if (buf ~= nil and peer ~= nil and peer ~= 'timeout') then
-              print(string.format("EC54S.agent: remote +%s:%s said:",
-                  peer or '-', peer_port or '-'))
-              EC54S.Util.dump_hex(buf)
-              --if (peer == self.server) then
-                  self.dl_port = peer_port
-                  self:message_handle(buf)
-              --[[else
-                  EC54S.Util.dbg(string.format("EC54S.agent: %s (bad remote +%s:%s)",
-                      EC54S.CONNERR.err_message[1], peer or '-', peer_port or '-'))
-              end]]--
-              self.dl_timeout_times = 0
-          else
-              local tt = self.dl_timeout_times + 1
-              print(sfmt("%d> EC54S.agent: (no message, timeout %d times)", ts(), tt))
-              self.dl_timeout_times = tt
+        if (self.auto_report) then    -- report right away but under cache control
+          local tstamp = ts()
+          if (tstamp - self.auto_report_ts >= self.auto_report_intl) then
+            self:message_send(EC54S.message.TYPE_UL_REPORT)
+            self.auto_report_ts = tstamp
+            --self:idle(1)    -- DEBUG USE ONLY!
+            self:idle(0.1)    -- Response 10 times max per second
           end
-          self.dl_port = 0
-          --]]--
         end
+        --[
+        -- wait for command
+        local buf, peer, peer_port = EC54S.Util.socket_recv(self.socket_fd)
+        if (buf ~= nil and peer ~= nil and peer ~= 'timeout') then
+            print(string.format("EC54S.agent: remote +%s:%s said:",
+                peer or '-', peer_port or '-'))
+            EC54S.Util.dump_hex(buf)
+            --if (peer == self.server) then
+                self.dl_host = peer
+                self.dl_port = peer_port
+                self:message_handle(buf)
+            --[[else
+                EC54S.Util.dbg(string.format("EC54S.agent: %s (bad remote +%s:%s)",
+                    EC54S.CONNERR.err_message[1], peer or '-', peer_port or '-'))
+            end]]--
+            self.dl_timeout_times = 0
+        else
+            local tt = self.dl_timeout_times + 1
+            print(sfmt("%d> EC54S.agent: (no message, timeout %d times)", ts(), tt))
+            self.dl_timeout_times = tt
+        end
+        self.dl_port = 0
+        --]]--
     end
 end
 
@@ -208,9 +221,10 @@ end
 function EC54S.agent:message_send(msg_type, devid, seq)
   
   local payload
-  if (msg_type == EC54S.message.TYPE_UL_REPORT
-    or msg_type == EC54S.message.TYPE_UL_QUERY_REPLY) then
-    payload = self:report_update()
+  if (msg_type == EC54S.message.TYPE_UL_REPORT) then
+    payload = self:report_update(EC54S.message.TYPE_UL_REPORT)
+  elseif (msg_type == EC54S.message.TYPE_UL_QUERY_REPLY) then
+    payload = self:report_update(EC54S.message.TYPE_UL_QUERY_REPLY)
   elseif (msg_type == EC54S.message.TYPE_UL_SET_ACK) then
     payload = schar(EC54S.message.TYPE_UL_SET_ACK)
   elseif (msg_type == EC54S.message.TYPE_HI) then
@@ -236,19 +250,20 @@ function EC54S.agent:message_send(msg_type, devid, seq)
   
   -- reply DL_REPORT|DL_SET right back
   -- or send to server:server_port
+  local host = self.dl_host or self.server
   local port = self.dl_port or self.server_port
   if (port == 0) then port = self.server_port end
-  EC54S.Util.socket_send(self.socket_fd, data, self.server, port)
+  EC54S.Util.socket_send(self.socket_fd, data, host, port)
   
   -- DEBUG USE ONLY
-  print(sfmt("EC54S.agent said +%s:%s (mt = %x)", self.server, port, msg_type))    -- print remote info
+  print(sfmt("EC54S.agent said +%s:%s (mt = %x)", host, port, msg_type))    -- print remote info
   EC54S.Util.dump_dec(data)    -- print in decimal
   EC54S.Util.dump_hex(data)    -- print in hexadecimal
 end
 
 -- ------------------------------------------------------------------------- --
 
-function EC54S.agent:report_update()
+function EC54S.agent:report_update(msg_type)
     EC54S.Util.dbg("EC54S.agent:report_update()")
     
     local n = tonumber    -- shortcut
@@ -259,7 +274,7 @@ function EC54S.agent:report_update()
     local gws_radio = gws_raw.radio
     
     local report_raw = {}
-    tbl_push(report_raw, schar(EC54S.message.TYPE_UL_QUERY_REPLY)) -- BYTE 7: CMD_RPY
+    tbl_push(report_raw, schar(msg_type)) -- BYTE 7: MSG_TYPE
     
     local noise = gws_abb.noise or -110
     local signal = gws_abb.signal or noise

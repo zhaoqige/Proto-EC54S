@@ -1,5 +1,6 @@
 -- by Qige <qigezhao@gmail.com>
 -- 2017.06.29 setmetatable|signal|ccff|conf
+-- 2017.07.04 cache control|dl_host
 
 local ccff = require 'qutil.ccff'
 local PROTO = require 'qec54s.ec54s'
@@ -36,7 +37,7 @@ function Agent.run(remote)
     Agent.conf.port
   )
 
-  error_message = agent:service_init(1 or 0.2)    -- rel: 0.2, debug: 1
+  error_message = agent:service_init(0.2)    -- rel: 0.2, debug: 0.8
 
   if (error_message == nil) then
     local i
