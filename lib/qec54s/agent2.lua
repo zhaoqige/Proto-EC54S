@@ -1,6 +1,6 @@
 -- by Qige <qigezhao@gmail.com>
 -- 2017.06.29 setmetatable|signal|ccff|conf
--- 2017.07.04 cache control|dl_host
+-- 2017.07.04 cache control|dl_host|flag_defense
 
 local ccff = require 'qutil.ccff'
 local PROTO = require 'qec54s.ec54s'
@@ -19,6 +19,8 @@ Agent.conf.remote = cfgr('ec54s','v2','server') or '192.168.1.3'
 Agent.conf.remote_port = cfgr('ec54s','v2','server_port') or 3001
 Agent.conf.port = cfgr('ec54s','v2','port') or 3001
 
+Agent.conf.flag_defense = cfgr('ec54s','v2','flag_defense') or 0
+
 function Agent.run(remote)
   local agent
   local error_message
@@ -32,6 +34,7 @@ function Agent.run(remote)
 
   agent = PROTO.agent.daemon(
     Agent.conf.siteno, 
+    Agent.conf.flag_defense,
     remote or Agent.conf.remote, 
     Agent.conf.remote_port, 
     Agent.conf.port

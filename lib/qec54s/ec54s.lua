@@ -1,6 +1,7 @@
 -- by Qige <qigezhao@gmail.com>
 -- 2017.06.29 base structure/components
 -- 2017.07.03 packet format
+-- 2017.07.04 flag_defense
 
 --local uci = require 'uci'
 local socket = require 'socket'
@@ -56,6 +57,7 @@ EC54S.CONNERR.err_message = {
 
 function EC54S.agent.daemon(    -- Public API
     local_devid,	-- local assigned device id
+    flag_defense,
     server, server_port,  -- server port
     port,         -- local port
     callback
@@ -75,6 +77,13 @@ function EC54S.agent.daemon(    -- Public API
     ec54s_agent.ul_msg_seq = 0
     ec54s_agent.ul_msg_devid = local_devid or 0xff
 
+    local def = tonumber(flag_defense)
+    if (def > 0) then
+      ec54s_agent.flag_defense = true
+    else
+      ec54s_agent.flag_defense = false
+    end
+    
     ec54s_agent.dl_host = nil
     ec54s_agent.dl_port = tonumber(ec54s_agent.port)
 
@@ -137,17 +146,17 @@ function EC54S.agent:service_handle()    -- Public API
         -- wait for command
         local buf, peer, peer_port = EC54S.Util.socket_recv(self.socket_fd)
         if (buf ~= nil and peer ~= nil and peer ~= 'timeout') then
-            print(string.format("EC54S.agent: remote +%s:%s said:",
+            print(sfmt("EC54S.agent: remote +%s:%s said:",
                 peer or '-', peer_port or '-'))
             EC54S.Util.dump_hex(buf)
-            --if (peer == self.server) then
+            if (self.flag_defense == true and peer ~= self.server) then
+                print(sfmt("EC54S.agent: %s (bad remote +%s:%s)",
+                    EC54S.CONNERR.err_message[1], peer or '-', peer_port or '-'))
+            else
                 self.dl_host = peer
                 self.dl_port = peer_port
                 self:message_handle(buf)
-            --[[else
-                EC54S.Util.dbg(string.format("EC54S.agent: %s (bad remote +%s:%s)",
-                    EC54S.CONNERR.err_message[1], peer or '-', peer_port or '-'))
-            end]]--
+            end
             self.dl_timeout_times = 0
         else
             local tt = self.dl_timeout_times + 1
