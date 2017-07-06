@@ -202,6 +202,8 @@ function EC54S.agent:message_handle(message)
   local dl_seq, dl_devid
   local cmds_raw, dl_seq, dl_devid = EC54S.Proto.decode(message)
   local cmd, value = EC54S.Proto.cmd_pickup(cmds_raw)
+  
+  local cmds = {}
 
   --print('message_handle raw> cmds_raw|dl_seq|dl_devid = ', cmds_raw, dl_seq, dl_devid)
   --print('cmd_pickup() > cmd|value = ', cmd, value)
@@ -214,17 +216,25 @@ function EC54S.agent:message_handle(message)
     self:message_send(EC54S.message.TYPE_BYE, self.ul_msg_devid)
   elseif (cmd == 'channel') then
     self:message_send(EC54S.message.TYPE_UL_SET_ACK, dl_devid, dl_seq)
-    self:execute_command('setchan ' .. value)
+    cmds.channel = value
+  elseif (cmd == 'txpower') then
+    self:message_send(EC54S.message.TYPE_UL_SET_ACK, dl_devid, dl_seq)
+    cmds.txpower = value
   elseif (cmd == 'region') then
     self:message_send(EC54S.message.TYPE_UL_SET_ACK, dl_devid, dl_seq)
-    self:execute_command('setregion ' .. value)
+    cmds.region = value
+  elseif (cmd == 'wifi') then
+    self:message_send(EC54S.message.TYPE_UL_SET_ACK, dl_devid, dl_seq)
+    cmds.wifi = value
   elseif (cmd == 'mode') then
     self:message_send(EC54S.message.TYPE_UL_SET_ACK, dl_devid, dl_seq)
-    self:execute_command('config_' .. value)
+    cmds.mode = value
   elseif (cmd == 'siteno') then
     self:message_send(EC54S.message.TYPE_UL_SET_ACK, dl_devid, dl_seq)
-    --self:config_save('siteno', value)
+    cmds.siteno = value
   end
+  
+  self:execute_command(cmds)
 end
 
 function EC54S.agent:message_send(msg_type, devid, seq)
@@ -265,7 +275,7 @@ function EC54S.agent:message_send(msg_type, devid, seq)
   EC54S.Util.socket_send(self.socket_fd, data, host, port)
   
   -- DEBUG USE ONLY
-  print(sfmt("EC54S.agent said +%s:%s (mt = %x)", host, port, msg_type))    -- print remote info
+  print(sfmt("EC54S.agent said +%s:%s (mt = %x | %d)", host, port, msg_type, ts()))    -- print remote info
   EC54S.Util.dump_dec(data)    -- print in decimal
   EC54S.Util.dump_hex(data)    -- print in hexadecimal
 end
@@ -337,10 +347,9 @@ end
 -- ------------------------------------------------------------------------- --
 
 -- TODO: Handle SET request
-function EC54S.agent:execute_command(commands)    -- Internal API
+function EC54S.agent:execute_command(cmds)    -- Internal API
     EC54S.Util.dbg("EC54S.agent:execute_command()")
-    print('agent raw> command = ', commands)
-    --ccff.exec(commands)
+    EC54S.Device1.set(cmds)
 end
 
 return (EC54S)

@@ -127,10 +127,14 @@ function Packet.cmd_pickup(str)
           cmd = 'channel'
         elseif (cmd == 'R' or cmd == 'r') then
           cmd = 'region'
-        elseif (cmd == 'M' or cmd == 'm') then
-          cmd = 'mode'
+        elseif (cmd == 'CB' or cmd == 'cb') then
+          cmd = 'chanbw'
         elseif (cmd == 'SN' or cmd == 'sn') then
           cmd = 'siteno'
+        elseif (cmd == 'W' or cmd == 'w') then
+          cmd = 'wifi'
+        elseif (cmd == 'M' or cmd == 'm') then
+          cmd = 'mode'
         else
           cmd = nil
           val = nil
