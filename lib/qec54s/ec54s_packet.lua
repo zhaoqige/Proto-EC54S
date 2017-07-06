@@ -125,6 +125,8 @@ function Packet.cmd_pickup(str)
       if (cmd and val) then
         if (cmd == 'C' or cmd == 'c') then
           cmd = 'channel'
+        elseif (cmd == 'TP' or cmd == 'tp') then
+          cmd = 'txpower'
         elseif (cmd == 'R' or cmd == 'r') then
           cmd = 'region'
         elseif (cmd == 'CB' or cmd == 'cb') then

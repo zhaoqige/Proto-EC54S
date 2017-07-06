@@ -226,6 +226,9 @@ function EC54S.agent:message_handle(message)
   elseif (cmd == 'wifi') then
     self:message_send(EC54S.message.TYPE_UL_SET_ACK, dl_devid, dl_seq)
     cmds.wifi = value
+  elseif (cmd == 'chanbw') then
+    self:message_send(EC54S.message.TYPE_UL_SET_ACK, dl_devid, dl_seq)
+    cmds.chanbw = value
   elseif (cmd == 'mode') then
     self:message_send(EC54S.message.TYPE_UL_SET_ACK, dl_devid, dl_seq)
     cmds.mode = value
