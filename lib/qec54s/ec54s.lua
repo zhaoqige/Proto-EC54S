@@ -85,7 +85,7 @@ function EC54S.agent.daemon(    -- Public API
     end
     
     ec54s_agent.dl_host = nil
-    ec54s_agent.dl_port = tonumber(ec54s_agent.port)
+    ec54s_agent.dl_port = nil
 
     ec54s_agent.server = server or '127.0.0.1'
     ec54s_agent.server_port = server_port or EC54S.agent.DEFAULT_PORT
@@ -100,14 +100,15 @@ end
 
 function EC54S.agent:service_init(timeout)
     local ret
+    -- check dependency: LuaSocket
     if (self.connected) then
         return ("EC54S.agent: Already connected (error)")
     end
-
     if (socket == nil) then
         return ("EC54S.agent: Need LuaSocket (error)")
     end
 
+    -- init socket
     self.socket_fd = EC54S.Util.socket_raw()
     if (self.socket_fd == nil) then
         return ("EC54S.agent: Invalid local socket (error)")
@@ -142,7 +143,7 @@ function EC54S.agent:service_handle()    -- Public API
             self:idle(0.1)    -- Response 10 times max per second
           end
         end
-        --[
+
         -- wait for command
         local buf, peer, peer_port = EC54S.Util.socket_recv(self.socket_fd)
         if (buf ~= nil and peer ~= nil and peer ~= 'timeout') then
@@ -163,8 +164,8 @@ function EC54S.agent:service_handle()    -- Public API
             print(sfmt("%d> EC54S.agent: (no message, timeout %d times)", ts(), tt))
             self.dl_timeout_times = tt
         end
-        self.dl_port = 0
-        --]]--
+        self.dl_host = nil
+        self.dl_port = nil
     end
 end
 
@@ -273,7 +274,7 @@ function EC54S.agent:message_send(msg_type, devid, seq)
   -- reply DL_REPORT|DL_SET right back
   -- or send to server:server_port
   local host = self.dl_host or self.server
-  local port = self.dl_port or self.server_port
+  local port = self.dl_port or 0
   if (port == 0) then port = self.server_port end
   EC54S.Util.socket_send(self.socket_fd, data, host, port)
   
