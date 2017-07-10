@@ -15,9 +15,9 @@ local Agent = {}
 Agent.conf = {}
 Agent.conf._SIGNAL = '/tmp/.ec54s_signal'
 Agent.conf.siteno = cfgr('ec54s','v2','siteno') or '254'
-Agent.conf.remote = cfgr('ec54s','v2','server') or '192.168.1.3'
-Agent.conf.remote_port = cfgr('ec54s','v2','server_port') or 3001
-Agent.conf.port = cfgr('ec54s','v2','port') or 3001
+Agent.conf.remote = cfgr('ec54s','v2','server') or '192.168.1.1'
+Agent.conf.remote_port = cfgr('ec54s','v2','server_port') or 3000
+Agent.conf.port = cfgr('ec54s','v2','port') or 3000
 
 Agent.conf.flag_defense = cfgr('ec54s','v2','flag_defense') or 0
 
