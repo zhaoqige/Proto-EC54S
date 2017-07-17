@@ -84,12 +84,14 @@ function Packet.decode(data)
       local seq_raw = ssub(data, 3, 4)
       local seq = Packet.int(seq_raw)
       Packet.dl_seq = seq
-      --print('seq=' .. seq)
+      --print('Packet.decode raw> seq=' .. seq)
       local devid_raw = ssub(data, 5, 6)
       local devid = Packet.int(devid_raw)
       Packet.dl_devid = devid
-      --print('devid=' .. devid)
+      --print('Packet.decode raw> devid=' .. devid)
 
+      -- when data type is 0x11 or 0x12, return seq & devid
+      -- DEBUG USE ONLY: add 0x20, return seq & devid
       local data_raw_length = math.min(length - 8, data_length)
       data_type = ssub(data, 7, 7)    -- DEBUG: data_type == ' '
       if (data_type == Packet.message.TYPE_DL_QUERY or data_type == Packet.message.TYPE_DL_SET) then

@@ -25,7 +25,7 @@ function Agent.run(remote)
   local agent
   local error_message
 
-  local s = sfmt("Agent (%s|%s|%s:%s) start @ %d\n", 
+  local s = sfmt("Agent (#%s | %s > %s:%s) start @ %d\n", 
     Agent.conf.siteno, Agent.conf.port, 
     Agent.conf.remote, Agent.conf.remote_port,
     ts())
