@@ -18,7 +18,7 @@ local ts = os.time
 
 local EC54S = {}
 
-EC54S.VERSION = 'B030717C'
+EC54S.VERSION = 'B170717D'
 EC54S.Util = require 'qec54s.ec54s_util'    -- UDP
 --EC54S.Util = require 'qec54s.ec54s_util_tcp'    -- TODO: reserved for TCP
 
@@ -241,6 +241,7 @@ function EC54S.agent:message_handle(message)
   self:execute_command(cmds)
 end
 
+-- send message with assigned devid & seq
 function EC54S.agent:message_send(msg_type, devid, seq)
   
   local payload
@@ -267,19 +268,27 @@ function EC54S.agent:message_send(msg_type, devid, seq)
   
   -- fill in DL_REPORT|DL_SET seq & devid
   --print('message_send raw> seq|devid = ', devid, seq)
-  if (seq) then packet_raw.seq = tonumber(seq) end
-  if (devid) then packet_raw.devid = tonumber(devid) end
-  local data = EC54S.Proto.encode(packet_raw)
+  if (seq) then
+    packet_raw.seq = tonumber(seq)
+  end
+  if (devid) then
+    packet_raw.devid = tonumber(devid)
+  end
   
   -- reply DL_REPORT|DL_SET right back
   -- or send to server:server_port
   local host = self.dl_host or self.server
-  local port = self.dl_port or 0
-  if (port == 0) then port = self.server_port end
+  local port = self.dl_port or self.server_port
+  if (port == 0) then
+    port = self.server_port
+  end
+
+  -- encode & send
+  local data = EC54S.Proto.encode(packet_raw)
   EC54S.Util.socket_send(self.socket_fd, data, host, port)
   
   -- DEBUG USE ONLY
-  print(sfmt("EC54S.agent said +%s:%s (mt = %x | %d)", host, port, msg_type, ts()))    -- print remote info
+  print(sfmt("EC54S.agent told +%s:%s (mt = %x | %d)", host, port, msg_type, ts()))    -- print remote info
   EC54S.Util.dump_dec(data)    -- print in decimal
   EC54S.Util.dump_hex(data)    -- print in hexadecimal
 end
