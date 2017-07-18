@@ -112,7 +112,7 @@ function Packet.decode(data)
       cmds = data_raw
     else
       --cmds = 'R'
-      
+
       -- add debug here, enter "nc 192.168.1.24 3000 -u"
       cmds = 'R'
     end

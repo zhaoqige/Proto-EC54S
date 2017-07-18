@@ -83,14 +83,14 @@ function EC54S.agent.daemon(    -- Public API
     else
       ec54s_agent.flag_defense = false
     end
-    
+
     ec54s_agent.dl_host = nil
     ec54s_agent.dl_port = nil
 
     ec54s_agent.server = server or '127.0.0.1'
     ec54s_agent.server_port = server_port or EC54S.agent.DEFAULT_PORT
     ec54s_agent.port = port or EC54S.agent.DEFAULT_PORT
-    
+
     ec54s_agent.auto_report = true
     ec54s_agent.auto_report_ts = 0    -- store last time stamp
     ec54s_agent.auto_report_intl = 1    -- interval is 1 seconds
@@ -113,7 +113,7 @@ function EC54S.agent:service_init(timeout)
     if (self.socket_fd == nil) then
         return ("EC54S.agent: Invalid local socket (error)")
     end
-    
+
     ret = self.socket_fd:settimeout(timeout or 0)
     ret = self.socket_fd:setsockname('*', self.port)    -- if port available, return 1
     --print('agent raw> setsockname = ', ret)
@@ -123,7 +123,7 @@ function EC54S.agent:service_init(timeout)
     end
     EC54S.Util.socket_wait_connected(self.socket_fd)    -- when TCP, do nothing before connected
     self:message_send(EC54S.message.TYPE_HI)    -- Send HI to server after connected
-    
+
     print(sfmt("EC54S.agent (%s) initialized.", self.VERSION))
     self.connected = true
     return nil
@@ -204,11 +204,11 @@ function EC54S.agent:message_handle(message)
   local dl_seq, dl_devid, cmds_raw
   cmds_raw, dl_seq, dl_devid = EC54S.Proto.decode(message)
   local cmd, value = EC54S.Proto.cmd_pickup(cmds_raw)
-  
+
   local cmds = {}
 
   --print('message_handle raw> cmds_raw|dl_seq|dl_devid = ', cmds_raw, dl_seq, dl_devid)
-  --print('cmd_pickup() > cmd|value = ', cmd, value)
+  --print('000 - cmd_pickup() > cmd|value = ', cmd, value)
 
   if (cmd == 'hi') then
     self:message_send(EC54S.message.TYPE_HI, self.ul_msg_devid)
@@ -248,13 +248,13 @@ function EC54S.agent:message_handle(message)
   else
     self:message_send(EC54S.message.TYPE_UL_REPORT, self.ul_msg_devid)
   end
-  
+
   self:execute_command(cmds)
 end
 
 -- send message with assigned devid & seq
 function EC54S.agent:message_send(msg_type, devid, seq)
-  
+
   local payload
   if (msg_type == EC54S.message.TYPE_UL_REPORT) then
     payload = self:report_update(EC54S.message.TYPE_UL_REPORT)
@@ -269,14 +269,14 @@ function EC54S.agent:message_send(msg_type, devid, seq)
   else
     payload = schar(0x00)
   end
-  
+
   local packet_raw = {}
   if (type(payload) == 'table') then
     packet_raw.data = tbl_flat(payload, '')
   else
     packet_raw.data = payload
   end
-  
+
   -- fill in DL_REPORT|DL_SET seq & devid
   --print('message_send raw> seq|devid = ', devid, seq)
   if (seq) then
@@ -287,7 +287,7 @@ function EC54S.agent:message_send(msg_type, devid, seq)
   else
     packet_raw.devid = tonumber(self.ul_msg_devid)
   end
-  
+
   -- reply DL_REPORT|DL_SET right back
   -- or send to server:server_port
   local host = self.dl_host or self.server
@@ -299,7 +299,7 @@ function EC54S.agent:message_send(msg_type, devid, seq)
   -- encode & send
   local data = EC54S.Proto.encode(packet_raw)
   EC54S.Util.socket_send(self.socket_fd, data, host, port)
-  
+
   -- DEBUG USE ONLY
   print(sfmt("EC54S.agent told +%s:%s (mt = %x | %d)", host, port, msg_type, ts()))    -- print remote info
   EC54S.Util.dump_dec(data)    -- print in decimal
@@ -310,17 +310,17 @@ end
 
 function EC54S.agent:report_update(msg_type)
     EC54S.Util.dbg("EC54S.agent:report_update()")
-    
+
     local n = tonumber    -- shortcut
-    
+
     local device = EC54S.Device1
     local gws_raw = device.param()
     local gws_abb = gws_raw.abb
     local gws_radio = gws_raw.radio
-    
+
     local report_raw = {}
     tbl_push(report_raw, schar(msg_type)) -- BYTE 7: MSG_TYPE
-    
+
     local noise = gws_abb.noise or -110
     local signal = gws_abb.signal or noise
     noise = noise - (-110)
@@ -336,10 +336,10 @@ function EC54S.agent:report_update(msg_type)
     tbl_push(report_raw, schar(gws_abb.chanbw or 0))    -- Byte N5: chanbw
 
     tbl_push(report_raw, schar(EC54S.Util.mode_val(gws_abb.mode) or 0))    -- Byte N6: flag
-    
+
     local peer_qty = gws_abb.peer_qty or 0
     tbl_push(report_raw, schar(peer_qty))    -- Byte N7: peer qty
-    
+
     if (peer_qty > 0) then    -- Byte N7*X
       -- FIXME: add Byte N7*X @ 2017.07.03
       -- issue#1: rx_mcs|tx_mcs always = 0
@@ -349,18 +349,18 @@ function EC54S.agent:report_update(msg_type)
           local devid = ssub(peer.wmac, 13, 17) or '00:00'
           --print('ec54s raw> peer wmac|devid = ', peer.wmac, devid)
           tbl_push(peer_raw, schar('0x' .. ssub(devid, 1, 2)) .. schar('0x' .. ssub(devid, 4, 5)))    -- Byte X1, X2: last 2 bytes of Hex WMAC
-          
+
           local rssi = peer.signal
           rssi = rssi - (-110)
           if (rssi < noise) then rssi = noise end
           tbl_push(peer_raw, schar(rssi or 0))    -- Byte X3
-          
+
           tbl_push(peer_raw, schar(peer.rx_mcs or 0))    -- Byte X4
           tbl_push(peer_raw, schar(peer.tx_mcs or 0))    -- Byte X5
 
           tbl_push(peer_raw, schar(0))    -- Byte X6: reserved for txpower
           tbl_push(peer_raw, schar(0))    -- Byte X7: reserved for rxgain
-        
+
           tbl_push(report_raw, tbl_flat(peer_raw)) -- append Byte X
         end
       end
