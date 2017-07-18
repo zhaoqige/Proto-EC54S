@@ -32,6 +32,7 @@ function ccff.conf.set(conf, sec, opt, val)
 		if (conf and sec and opt and val) then
 			local uc = uci.cursor()
 			uc:set(conf, sec, opt, val)
+			uc:commit(conf)
 		end
 	end
 end
