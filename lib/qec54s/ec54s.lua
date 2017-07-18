@@ -235,8 +235,16 @@ function EC54S.agent:message_handle(message)
   elseif (cmd == 'siteno') then
     self:message_send(EC54S.message.TYPE_UL_SET_ACK, dl_devid, dl_seq)
     cmds.siteno = value
+    local val = tonumber(value)
+    if (val > 0) then
+      self.ul_msg_devid = value
+    end
   elseif (cmd == 'report') then
-    self:message_send(EC54S.message.TYPE_UL_QUERY_REPLY, dl_devid or self.ul_msg_devid, dl_seq or 0)
+    if (dl_devid and dl_devid > 0) then
+      self:message_send(EC54S.message.TYPE_UL_QUERY_REPLY, dl_devid or 0, dl_seq or 0)
+    else
+      self:message_send(EC54S.message.TYPE_UL_QUERY_REPLY, self.ul_msg_devid or 0, dl_seq or 0)
+    end
   else
     self:message_send(EC54S.message.TYPE_UL_REPORT, self.ul_msg_devid)
   end
@@ -276,6 +284,8 @@ function EC54S.agent:message_send(msg_type, devid, seq)
   end
   if (devid) then
     packet_raw.devid = tonumber(devid)
+  else
+    packet_raw.devid = tonumber(self.ul_msg_devid)
   end
   
   -- reply DL_REPORT|DL_SET right back
