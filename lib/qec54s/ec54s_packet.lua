@@ -94,16 +94,20 @@ function Packet.decode(data)
       -- DEBUG USE ONLY: add 0x20, return seq & devid
       local data_raw_length = math.min(length - 8, data_length)
       data_type = ssub(data, 7, 7)    -- DEBUG: data_type == ' '
-      if (data_type == Packet.message.TYPE_DL_QUERY or data_type == Packet.message.TYPE_DL_SET) then
+      --[[if (data_type == Packet.message.TYPE_DL_QUERY or data_type == Packet.message.TYPE_DL_SET) then
         dl_seq = seq
         dl_devid = devid
       end
-      if (data_type == ' ') then
+      if (data_type == 0x20) then
         dl_seq = seq
         dl_devid = devid
       end
-      --print('packet raw> seq|devid|data_type = ', seq, devid, data_type)
-      
+      print(sfmt('packet raw> seq|devid|data_type = %d,%d,[%x]', seq, devid, data_type))
+      ]]--
+
+      dl_seq = seq
+      dl_devid = devid
+
       local data_raw = ssub(data, 8, 8+data_raw_length)
       cmds = data_raw
     else
@@ -113,8 +117,8 @@ function Packet.decode(data)
       cmds = 'R'
     end
   end
-  
-  --print('packet raw> dl seq|devid|data_type = ', dl_seq, dl_devid, data_type)
+
+  --print('packet raw> data|dl_seq|devid|data_type = ', data, dl_seq, dl_devid, data_type)
   return cmds, dl_seq, dl_devid
 end
 
@@ -145,11 +149,11 @@ function Packet.cmd_pickup(str)
         end
       end
     else
-      if (str == Packet.message.TYPE_DL_QUERY or str == Packet.conf.char_enter or str == 'r' or str == 'R') then
+      if (str == Packet.message.TYPE_DL_QUERY or str == 'r' or str == 'R') then
         cmd = 'report'
-      elseif (cmd == 0x00) then
+      elseif (str == 0x00) then
         cmd = 'hi'
-      elseif (cmd == 0xff) then
+      elseif (str == 0xff) then
         cmd = 'bye'
       else
         cmd = 'report'

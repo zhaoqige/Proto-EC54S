@@ -149,6 +149,7 @@ function EC54S.agent:service_handle()    -- Public API
         if (buf ~= nil and peer ~= nil and peer ~= 'timeout') then
             print(sfmt("EC54S.agent: remote +%s:%s said:",
                 peer or '-', peer_port or '-'))
+            EC54S.Util.dump_dec(buf)
             EC54S.Util.dump_hex(buf)
             if (self.flag_defense == true and peer ~= self.server) then
                 print(sfmt("EC54S.agent: %s (bad remote +%s:%s)",
@@ -200,18 +201,16 @@ end
 
 function EC54S.agent:message_handle(message)
   -- TODO: return SEQ, Devid
-  local dl_seq, dl_devid
-  local cmds_raw, dl_seq, dl_devid = EC54S.Proto.decode(message)
+  local dl_seq, dl_devid, cmds_raw
+  cmds_raw, dl_seq, dl_devid = EC54S.Proto.decode(message)
   local cmd, value = EC54S.Proto.cmd_pickup(cmds_raw)
   
   local cmds = {}
 
   --print('message_handle raw> cmds_raw|dl_seq|dl_devid = ', cmds_raw, dl_seq, dl_devid)
   --print('cmd_pickup() > cmd|value = ', cmd, value)
-  
-  if (cmd == 'report') then
-    self:message_send(EC54S.message.TYPE_UL_REPORT, dl_devid or self.ul_msg_devid, dl_seq)
-  elseif (cmd == 'hi') then
+
+  if (cmd == 'hi') then
     self:message_send(EC54S.message.TYPE_HI, self.ul_msg_devid)
   elseif (cmd == 'bye') then
     self:message_send(EC54S.message.TYPE_BYE, self.ul_msg_devid)
@@ -236,6 +235,10 @@ function EC54S.agent:message_handle(message)
   elseif (cmd == 'siteno') then
     self:message_send(EC54S.message.TYPE_UL_SET_ACK, dl_devid, dl_seq)
     cmds.siteno = value
+  elseif (cmd == 'report') then
+    self:message_send(EC54S.message.TYPE_UL_QUERY_REPLY, dl_devid or self.ul_msg_devid, dl_seq or 0)
+  else
+    self:message_send(EC54S.message.TYPE_UL_REPORT, self.ul_msg_devid)
   end
   
   self:execute_command(cmds)
