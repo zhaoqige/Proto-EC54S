@@ -26,8 +26,8 @@ function radio.hw_arch()
 
   local cpu, dev
   local cpu_raw = ccff.execute('cat /proc/cpuinfo | grep system')
-  local dev_raw = ccff.execute('ls /dev/gws*')
-  
+  local dev_raw = ccff.execute('ls /dev/gws* 2>/dev/null')
+
   if (string_has(cpu_raw, '9533')) then
     cpu = '9533'
     hw_arch = 'gws5k'    -- gws5-9531-33
@@ -40,7 +40,7 @@ function radio.hw_arch()
   else
     hw_arch = nil
   end
- 
+
   return hw_arch
 end
 
@@ -56,9 +56,9 @@ function radio.update()
   else
     dev = gws34.update()
   end
-  
+
   --print('radio.update dev raw> txpower|channel =', dev.txpower, dev.channel)
-  
+
   return dev
 end
 
