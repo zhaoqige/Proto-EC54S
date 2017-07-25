@@ -25,25 +25,23 @@ function Agent.run(remote)
   local agent
   local error_message
 
-  local s = sfmt("Agent (#%s | %s > %s:%s) start @ %d\n", 
-    Agent.conf.siteno, Agent.conf.port, 
-    Agent.conf.remote, Agent.conf.remote_port,
-    ts())
-  echo(s)
-  Agent.log(s)
-
   agent = PROTO.agent.daemon(
-    Agent.conf.siteno, 
+    Agent.conf.siteno,
     Agent.conf.flag_defense,
-    remote or Agent.conf.remote, 
-    Agent.conf.remote_port, 
+    remote or Agent.conf.remote,
+    Agent.conf.remote_port,
     Agent.conf.port
   )
 
   error_message = agent:service_init(0.2)    -- rel: 0.2, debug: 0.8
-
   if (error_message == nil) then
-    local i
+    local s = sfmt("Agent (#%s | %s > %s:%s) start @ %d\n",
+      Agent.conf.siteno, Agent.conf.port,
+      Agent.conf.remote, Agent.conf.remote_port,
+      ts())
+    echo(s)
+    Agent.log(s)
+
     while true do
       if (Agent.QUIT_SIGNAL()) then
         break
@@ -51,14 +49,14 @@ function Agent.run(remote)
       agent:service_handle()
       agent:idle()
     end
+    local s = sfmt("Agent stopped @ %d\n", ts())
+    echo(s)
+    Agent.log(s)
   else
     print(error_message)
   end
 
   agent:destroy()
-  local s = sfmt("Agent stopped @ %d\n", ts())
-  echo(s)
-  Agent.log(s)
 end
 
 function Agent.log(message)
@@ -70,7 +68,7 @@ function Agent.QUIT_SIGNAL()
   local signal =  false
   local exit_array = {
     "exit","exit\n",
-    "stop","stop\n",
+    --"stop","stop\n",
     "quit","quit\n",
     "bye","byte\n",
     "down","down\n"
